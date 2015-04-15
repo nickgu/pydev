@@ -2,10 +2,6 @@
 # encoding=utf-8
 # gusimiu@baidu.com
 # 
-
-#! /bin/env python
-# encoding=utf-8
-# gusimiu@baidu.com
 #   
 #   V1.0.2 change::
 #       add Mapper mode. (--mapper)
@@ -494,9 +490,40 @@ def CMD_counter(argv):
                 print '%s\t%s' % (last_key, acc_value)
 
 
+class Timer:
+    def __init__(self):
+        self.__begin_time = None
+        self.__end_time = None
+        self.__counter = 0
+        self.__total_time = 0
+
+    def begin(self):
+        self.__begin_time = time.time()
+
+    def end(self):
+        self.__end_time = time.time()
+        self.__total_time += self.cost_time()
+        self.__counter += 1
+
+    def cost_time(self):
+        return self.__end_time - self.__begin_time
+
+    def qps(self):
+        qps = self.__counter / self.__total_time
+        return qps
+        
+    def log(self, stream=sys.stderr, name=None, output_qps=False):
+        qps_info = ''
+        if output_qps:
+            qps_info = 'QPS=%.3f' % (self.qps())
+        if name:
+            print >> stream, '[Timer][%s]: %.3f(s) %s' % (name, self.cost_time(), qps_info)
+        else:
+            print >> stream, '[Timer]: %.3f(s) %s' % (self.cost_time(), qps_info)
+
 if __name__=='__main__':
     '''
-    pygu.py <command>
+    pydev.py <command>
         command-list:
             list:
                 list all the availble command.
@@ -504,8 +531,8 @@ if __name__=='__main__':
     if len(sys.argv)<=1:
         print (
 '''Usage:
-    pygu.py <command>
-    you can use 'pygu.py show' to get all available command.
+    pydev.py <command>
+    you can use 'pydev.py show' to get all available command.
 ''')
         sys.exit(-1)
 
