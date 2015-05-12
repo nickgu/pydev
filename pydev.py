@@ -1,8 +1,14 @@
 #! /bin/env python
 # encoding=utf-8
 # gusimiu@baidu.com
-# 
+#   datemark: 20150428
 #   
+#   V1.0.4 change::
+#       add topkheap from zhangduo@
+#
+#   V1.0.3 change::
+#       add Timer.
+#
 #   V1.0.2 change::
 #       add Mapper mode. (--mapper)
 #
@@ -22,13 +28,70 @@ import socket
 import sys
 import time
 from multiprocessing import *
+import heapq
+import itertools
+import random
+
 #import threading
 
 
 HEADER_LENGTH = 8
 DETECTIVE_MSG = 'Are_you_alive?'
 
-def foreach_line(fd, percentage=False):
+
+class RandomItemGenerator:
+    '''
+    input a item stream and then output N random item.
+    '''
+    def __init__(self, N):
+        self.__random_num = N
+        self.__ol = []
+        self.__nth = 0
+
+    def feed(self, item):
+        if len(self.__ol)<self.__random_num:
+            self.__ol.append( item )
+        else:
+            x = random.randint(0, self.__nth)
+            if x < self.__random_num:
+                self.__ol[x] = item
+        self.__nth += 1
+
+    def result(self):
+        return self.__ol
+
+# from zhangduo.
+class TopkHeap(object):
+    def __init__(self, k, key_func):
+        self.k = k
+        self.key_func = key_func
+        self.data = []
+        self.counter = itertools.count() # unique sequence count
+
+    def get_data(self):
+        return [x[2] for x in self.data]
+    
+    def sorted_data(self):
+        return [x[2] for x in reversed([heapq.heappop(self.data) for x in xrange(len(self.data))])]
+
+    def extend_heap(self, size):
+        self.k += size
+
+    def push(self, elem):
+        if len(self.data) < self.k:
+            count = next(self.counter)
+            heapq.heappush(self.data, [self.key_func(elem), count, elem])
+            return True
+        else:
+            small_key, _, _ = self.data[0]
+            elem_key = self.key_func(elem)
+            if elem_key > small_key:
+                count = next(self.counter)
+                heapq.heapreplace(self.data, [elem_key, count, elem])
+                return True
+        return False
+
+def foreach_line(fd=sys.stdin, percentage=False):
     if percentage:
         cur_pos = fd.tell()
         fd.seek(0, 2)
@@ -49,7 +112,7 @@ def foreach_line(fd, percentage=False):
         yield line.strip('\n')
 
 
-def foreach_row(fd, min_fields_num=-1, seperator='\t', percentage=False):
+def foreach_row(fd=sys.stdin, min_fields_num=-1, seperator='\t', percentage=False):
     if percentage:
         cur_pos = fd.tell()
         fd.seek(0, 2)
@@ -71,6 +134,21 @@ def foreach_row(fd, min_fields_num=-1, seperator='\t', percentage=False):
         if min_fields_num>0 and len(arr)<min_fields_num:
             continue
         yield arr
+
+def dict_from_file(fd=sys.stdin, process=None):
+    dct = {}
+    for line in foreach_line(fd):
+        sep = line.find('\t')
+        key = line[:sep]
+        raw_value = line[sep+1:]
+
+        value = None
+        if process is None:
+            value = '\t'.join(raw_value)
+        else:
+            value = process(raw_value)
+        dct[key] = value
+    return dct
 
 def echo(input_text):
     return ('ACK: ' + input_text)
@@ -492,10 +570,7 @@ def CMD_counter(argv):
 
 class Timer:
     def __init__(self):
-        self.__begin_time = None
-        self.__end_time = None
-        self.__counter = 0
-        self.__total_time = 0
+        self.clear()
 
     def begin(self):
         self.__begin_time = time.time()
@@ -508,10 +583,19 @@ class Timer:
     def cost_time(self):
         return self.__end_time - self.__begin_time
 
+    def total_time(self):
+        return self.__total_time
+
     def qps(self):
         qps = self.__counter / self.__total_time
         return qps
-        
+
+    def clear(self):
+        self.__begin_time = None
+        self.__end_time = None
+        self.__counter = 0
+        self.__total_time = 0
+       
     def log(self, stream=sys.stderr, name=None, output_qps=False):
         qps_info = ''
         if output_qps:
