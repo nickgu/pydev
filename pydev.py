@@ -177,6 +177,17 @@ def foreach_row(fd=sys.stdin, min_fields_num=-1, seperator='\t', percentage=Fals
             continue
         yield arr
 
+def dict_from_str(s, l1_sep=';', l2_sep='='):
+    dct = {}
+    for item in s.split(l1_sep):
+        r = item.split(l2_sep)
+        if len(r)!=2:
+            logging.error('[dict_from_str]: [%s] is not a valid item.')
+            continue
+        dct[r[0]] = r[1]
+    return dct
+
+
 def dict_from_file(fd=sys.stdin, process=None):
     dct = {}
     for line in foreach_line(fd):
