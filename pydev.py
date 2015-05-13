@@ -3,6 +3,9 @@
 # gusimiu@baidu.com
 #   datemark: 20150428
 #   
+#   V1.0.5 change::
+#       add VarConf and RandomItemGenerator
+#
 #   V1.0.4 change::
 #       add topkheap from zhangduo@
 #
@@ -19,7 +22,6 @@
 # 
 
 
-import ConfigParser
 import os
 import re
 import logging
@@ -31,6 +33,7 @@ from multiprocessing import *
 import heapq
 import itertools
 import random
+import ConfigParser
 
 #import threading
 
@@ -38,6 +41,10 @@ import random
 HEADER_LENGTH = 8
 DETECTIVE_MSG = 'Are_you_alive?'
 
+##############################################################################
+# Part I: pydev library implemention.
+#
+##############################################################################
 
 class RandomItemGenerator:
     '''
@@ -90,6 +97,41 @@ class TopkHeap(object):
                 heapq.heapreplace(self.data, [elem_key, count, elem])
                 return True
         return False
+
+class VarConfig:
+    def __init__(self):
+        self.__config = ConfigParser.ConfigParser()
+
+    def read(self, filenames, var_opt=None, var_sec=None):
+        ''' 
+            use var_opt(dict) and var_section to load default param.
+            which will subtitute %(param)s in config.
+            Step 1: load filenames and load var_section.
+            Step 2: use var_opt to overwrite or add params.
+            Step 3: normally read filenames and subtitute the params.
+        '''
+        var_dict = {}
+        if var_sec:
+            tmp_conf = ConfigParser.ConfigParser()
+            tmp_conf.read(filenames)
+            for opt in tmp_conf.options(var_sec):
+                var_dict[opt] = tmp_conf.get(var_sec, opt)
+                logging.info('Load var: [%s]:[%s]' % (opt, var_dict[opt]))
+        # load var opt, override the var in conf file.
+        if var_opt:
+            for k, v in var_opt.iteritems():
+                var_dict[k] = v
+                logging.info('Load var: [%s]:[%s]' % (k, v))
+        self.__config = ConfigParser.ConfigParser(var_dict)
+        self.__config.read(filenames)
+
+    def get(self, sec, opt, default=None):
+        if self.__config.has_option(sec, opt):
+            return self.__config.get(sec, opt)
+        return default
+
+    def raw_config(self):
+        return self.__config
 
 def foreach_line(fd=sys.stdin, percentage=False):
     if percentage:
@@ -458,6 +500,42 @@ class MPProcessor:
         for process in self.processes:
             process.join();
 
+class Timer:
+    def __init__(self):
+        self.clear()
+
+    def begin(self):
+        self.__begin_time = time.time()
+
+    def end(self):
+        self.__end_time = time.time()
+        self.__total_time += self.cost_time()
+        self.__counter += 1
+
+    def cost_time(self):
+        return self.__end_time - self.__begin_time
+
+    def total_time(self):
+        return self.__total_time
+
+    def qps(self):
+        qps = self.__counter / self.__total_time
+        return qps
+
+    def clear(self):
+        self.__begin_time = None
+        self.__end_time = None
+        self.__counter = 0
+        self.__total_time = 0
+       
+    def log(self, stream=sys.stderr, name=None, output_qps=False):
+        qps_info = ''
+        if output_qps:
+            qps_info = 'QPS=%.3f' % (self.qps())
+        if name:
+            print >> stream, '[Timer][%s]: %.3f(s) %s' % (name, self.cost_time(), qps_info)
+        else:
+            print >> stream, '[Timer]: %.3f(s) %s' % (self.cost_time(), qps_info)
 
 class MTItemProcessor(MPProcessor):
     '''对一个item集合的多线程处理方式
@@ -495,6 +573,34 @@ class MTItemProcessor(MPProcessor):
                 line = fl.readline()
             fl.close();
         logging.info('MTP: merge over! %d lines written.'%line_cnt);
+
+##############################################################################
+# Part II: CMD definition.
+#  How to add a CMD:
+#  def CMD_xx:
+#   ''' doc.
+#   '''
+#   # your code.
+#
+#  xx will be command name.
+#  doc will be the help doc as cmd.
+#
+##############################################################################
+
+def CMD_random(argv):
+    '''Generate random lines from stdin.
+        Params:
+            random [random_num]
+    '''
+    random_num = 10
+    if len(argv)>0:
+        random_num = int(argv[1])
+    print >> sys.stderr, 'Random_num = %d' % random_num
+    rd = RandomItemGenerator(random_num)
+    for line in foreach_line():
+        rd.feed(line)
+    for item in rd.result():
+        print item
 
 def CMD_mgrservice(argv):
     '''Run the basic_service manager.
@@ -567,43 +673,15 @@ def CMD_counter(argv):
             if acc_value >= cut_num:
                 print '%s\t%s' % (last_key, acc_value)
 
-
-class Timer:
-    def __init__(self):
-        self.clear()
-
-    def begin(self):
-        self.__begin_time = time.time()
-
-    def end(self):
-        self.__end_time = time.time()
-        self.__total_time += self.cost_time()
-        self.__counter += 1
-
-    def cost_time(self):
-        return self.__end_time - self.__begin_time
-
-    def total_time(self):
-        return self.__total_time
-
-    def qps(self):
-        qps = self.__counter / self.__total_time
-        return qps
-
-    def clear(self):
-        self.__begin_time = None
-        self.__end_time = None
-        self.__counter = 0
-        self.__total_time = 0
-       
-    def log(self, stream=sys.stderr, name=None, output_qps=False):
-        qps_info = ''
-        if output_qps:
-            qps_info = 'QPS=%.3f' % (self.qps())
-        if name:
-            print >> stream, '[Timer][%s]: %.3f(s) %s' % (name, self.cost_time(), qps_info)
-        else:
-            print >> stream, '[Timer]: %.3f(s) %s' % (self.cost_time(), qps_info)
+def CMD_test_conf(argv):
+    cp = VarConfig()
+    cp.read(argv)
+    raw_conf = cp.raw_config()
+    for sec in raw_conf.sections():
+        print '[%s]' % sec
+        for k, v in raw_conf.items(sec):
+            print '%s.%s=%s' % (sec, k, v)
+        print 
 
 if __name__=='__main__':
     '''
