@@ -100,38 +100,153 @@ class TopkHeap(object):
 
 class VarConfig:
     def __init__(self):
-        self.__config = ConfigParser.ConfigParser()
+        self.__config = {}
+        self.__config_context = {}
 
-    def read(self, filenames, var_opt=None, var_sec=None):
+    def read(self, filenames, var_opt=None, var_sec='var', conf_template='conf_template'):
         ''' 
             use var_opt(dict) and var_section to load default param.
             which will subtitute %(param)s in config.
-            Step 1: load filenames and load var_section.
-            Step 2: use var_opt to overwrite or add params.
-            Step 3: normally read filenames and subtitute the params.
-        '''
-        var_dict = {}
-        if var_sec:
-            tmp_conf = ConfigParser.ConfigParser()
-            tmp_conf.read(filenames)
-            for opt in tmp_conf.options(var_sec):
-                var_dict[opt] = tmp_conf.get(var_sec, opt)
-                logging.info('Load var: [%s]:[%s]' % (opt, var_dict[opt]))
-        # load var opt, override the var in conf file.
-        if var_opt:
-            for k, v in var_opt.iteritems():
-                var_dict[k] = v
-                logging.info('Load var: [%s]:[%s]' % (k, v))
-        self.__config = ConfigParser.ConfigParser(var_dict)
-        self.__config.read(filenames)
 
-    def get(self, sec, opt, default=None):
-        if self.__config.has_option(sec, opt):
-            return self.__config.get(sec, opt)
+            Step 1: load all raw conf.
+                generate [(section.option, raw_info)] tuple.
+
+            Step 2: if conf_template is set:
+                makeup each conf by it's template conf.
+                conf template relation must be DAG.
+
+            Step 3: 
+                for section in DAG-order:
+                subtitute the params.
+        '''
+        raw_conf = ConfigParser.ConfigParser()
+        raw_conf.read(filenames)
+        # step 1. read row.
+        dependency = {}
+        section_list = list(raw_conf.sections())
+        if conf_template:
+            raw_conf = ConfigParser.ConfigParser()
+            raw_conf.read(filenames)
+            for section in raw_conf.sections():
+                if raw_conf.has_option(section, conf_template):
+                    dependency[section] = raw_conf.get(section, conf_template, raw=True)
+        # generate DAG-order.
+        dag_section_list = []
+        for section in section_list:
+            temp = []
+            while 1:
+                if section in self.__config:
+                    break
+                temp.insert(0, section)
+                self.__config[section] = {}
+                if section in dependency:
+                    section = dependency[section]
+                else:
+                    break
+            dag_section_list += temp
+
+        # step 2. 
+        #   makeup config by dependency.
+        for section in dag_section_list:
+            for opt in raw_conf.options(section):
+                value = raw_conf.get(section, opt, raw=True)
+                self.__config[section][opt] = value
+            self.__makeup_config(section, dependency.get(section, None))
+
+        # step 3.
+        #   substitute params.
+        default_var = {}
+        if var_sec:
+            default_var = self.__config.get(var_sec, {})
+        for section in dag_section_list:
+            self.__config_context[section] = self.__overwrite_dict([default_var, self.__config[section], var_opt])
+
+    def get(self, sec, opt, default=None, raw=False, throw_exception=True):
+        if sec in self.__config:
+            if opt in self.__config[sec]:
+                if raw:
+                    return self.__config[sec][opt]
+                return self.__interpolate(
+                            self.__config[sec][opt], 
+                            self.__config_context[sec], 
+                            throw_exception=throw_exception)
         return default
 
-    def raw_config(self):
-        return self.__config
+    def has_section(self, sec):
+        return sec in self.__config
+
+    def has_option(self, sec, opt):
+        if sec in self.__config:
+            if opt in self.__config[sec]:
+                return True
+        return False
+
+    def items(self, section, raw=False, throw_exception=True):
+        for key, value in self.__config.get(section, {}).iteritems():
+            if raw:
+                yield key, value
+            else:
+                yield key, self.__interpolate(value, self.__config_context[section], throw_exception)
+
+    def options(self, section):
+        return self.__config.get(section, {}).keys()
+
+    def sections(self):
+        return self.__config.keys()
+
+    def clear(self):
+        self.__config = {}
+
+    def __overwrite_dict(self, dict_list):
+        ret = {}
+        for d in dict_list:
+            if isinstance(d, dict):
+                for key, value in d.iteritems():
+                    ret[key] = value
+        return ret
+        
+    def __makeup_config(self, son, father):
+        if father is None:
+            return 
+        for key in self.__config[father].keys():
+            if key not in self.__config[son]:
+                self.__config[son][key] = self.__config[father][key]
+
+    def __interpolate(self, rawval, vars, throw_exception=True):
+        ''' code from ConfigParser()
+        '''
+        # do the string interpolation
+        value = rawval
+        depth = self.MAX_INTERPOLATION_DEPTH
+        while depth:                    # Loop through this until it's done
+            depth -= 1
+            if value and "%(" in value:
+                value = self._KEYCRE.sub(self._interpolation_replace, value)
+                try:
+                    value = value % vars
+                except KeyError, e:
+                    if throw_exception:
+                        raise Exception(('InterpolationMissingOptionError v=[%s]\n'
+                                '\tbad value=%s\n'
+                                '\tvals=%s\n') 
+                                % (value, e, vars))
+            else:
+                break
+        if value and "%(" in value:
+            if throw_exception:
+                raise Exception('InterpolationDepthErro')
+            else:
+                logging.error('VarConf: interpolation: [%s] failed.', rawval)
+        return value
+
+    MAX_INTERPOLATION_DEPTH = 32
+    _KEYCRE = re.compile(r"%\(([^)]*)\)s|.")
+    def _interpolation_replace(self, match):
+        s = match.group(1)
+        if s is None:
+            return match.group()
+        else:
+            return "%%(%s)s" % s.lower()
 
 def foreach_line(fd=sys.stdin, percentage=False):
     if percentage:
@@ -179,6 +294,8 @@ def foreach_row(fd=sys.stdin, min_fields_num=-1, seperator='\t', percentage=Fals
 
 def dict_from_str(s, l1_sep=';', l2_sep='='):
     dct = {}
+    if not isinstance(s, str):
+        return {}
     for item in s.split(l1_sep):
         r = item.split(l2_sep)
         if len(r)!=2:
@@ -627,7 +744,11 @@ def CMD_show(argv):
         if key.find('CMD_') == 0:
             print ' %s: ' % key.replace('CMD_', '')
             f = eval(key)
-            print '    %s' % (f.__doc__.replace('\n', '\n    '))
+            if f.__doc__ is None:
+                print '    [NO_DOC]'
+                print
+            else:
+                print '    %s' % (f.__doc__.replace('\n', '\n    '))
 
 def CMD_counter(argv):
     '''Run counter job.
@@ -686,12 +807,17 @@ def CMD_counter(argv):
 
 def CMD_test_conf(argv):
     cp = VarConfig()
-    cp.read(argv)
-    raw_conf = cp.raw_config()
-    for sec in raw_conf.sections():
+    cp.read(argv, throw_exception=False)
+    for sec in cp.sections():
         print '[%s]' % sec
-        for k, v in raw_conf.items(sec):
-            print '%s.%s=%s' % (sec, k, v)
+        options = cp.options(sec)
+        for k in options:
+            try:
+                v = cp.get(sec, k)
+                print '%s.%s=%s' % (sec, k, v)
+            except:
+                print '%s.%s [error]' % (sec, k)
+                continue
         print 
 
 if __name__=='__main__':
