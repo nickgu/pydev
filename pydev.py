@@ -3,6 +3,10 @@
 # gusimiu@baidu.com
 #   datemark: 20150428
 #   
+#   V1.0.6 change::
+#       add xfind
+#       xfind: set operation. treat file as set.
+#
 #   V1.0.5 change::
 #       add VarConf and RandomItemGenerator
 #
@@ -34,6 +38,7 @@ import heapq
 import itertools
 import random
 import ConfigParser
+import argparse
 
 #import threading
 
@@ -248,6 +253,98 @@ class VarConfig:
         else:
             return "%%(%s)s" % s.lower()
 
+class Arg(object):
+    '''这个类就是非常简单封装argparse的类。
+    使得更方便写而已
+    iname : 简写
+    Sample code:
+        ag=pydev.Arg()
+        ag.str_opt('f', 'file', 'this arg is for file')
+        opt = ag.init_arg()
+        # todo with opt, such as opt.file
+    '''
+    def __init__(self, help='Lazy guy, no help'):
+        self.is_parsed = False;
+        help = help.decode('utf-8').encode('gb18030')
+        self.__parser = argparse.ArgumentParser(description=help)
+        self.__args = None;
+        # 辅助设置调试参数：
+        #    -l --log 
+        #        info : info级别调试
+        #        debug : debug级别调试
+        self.str_opt('log', 'l', '设置日志等级，和logging联动', 'error', meta='[debug|info|error]');
+    def __default_tip(self, default_value=None):
+        if default_value==None:
+            return ''
+        return ' default=[%s]'%default_value
+
+    def bool_opt(self, name, iname, help=''):
+        '''设置开关型配置
+        '''
+        help = help.decode('utf-8').encode('gb18030')
+        self.__parser.add_argument(
+                '-'+iname, 
+                '--'+name, 
+                action='store_const', 
+                const=1,
+                default=0,
+                help=help);
+        return
+
+    def str_opt(self, name, iname, help='', default=None, meta=None):
+        '''设置字符串配置
+        '''
+        help = (help + self.__default_tip(default)).decode('utf-8').encode('gb18030')
+        self.__parser.add_argument(
+                '-'+iname, 
+                '--'+name, 
+                metavar=meta,
+                help=help,
+                default=default);
+        pass
+
+    def var_opt(self, name, meta='', help='', default=None):
+        '''不可丢变量
+        '''
+        help = (help + self.__default_tip(default).decode('utf-8').encode('gb18030'))
+        if meta=='':
+            meta=name
+        self.__parser.add_argument(name,
+                metavar=meta,
+                help=help,
+                default=default) 
+        pass
+
+    def init_arg(self, input_args=None):
+        if not self.is_parsed:
+            if input_args is not None:
+                self.__args = self.__parser.parse_args(input_args)
+            else:
+                self.__args = self.__parser.parse_args()
+            self.is_parsed = True;
+        if self.__args.log:
+            format='%(asctime)s %(levelname)8s [%(filename)18s:%(lineno)04d]: %(message)s'
+            if self.__args.log=='debug':
+                logging.basicConfig(level=logging.DEBUG, format=format)
+                logging.debug('log level set to [%s]'%(self.__args.log));
+            elif self.__args.log=='info':
+                logging.basicConfig(level=logging.INFO, format=format)
+                logging.info('log level set to [%s]'%(self.__args.log));
+            elif self.__args.log=='error':
+                logging.basicConfig(level=logging.ERROR, format=format)
+                logging.info('log level set to [%s]'%(self.__args.log));
+            else:
+                logging.error('log mode invalid! [%s]'%self.__args.log)
+        return self.__args
+
+    @property
+    def args(self):
+        if not self.is_parsed:
+            self.__args = self.__parser.parse_args()
+            self.is_parsed = True;
+        return self.__args;
+
+
 def foreach_line(fd=sys.stdin, percentage=False):
     if percentage:
         cur_pos = fd.tell()
@@ -305,18 +402,18 @@ def dict_from_str(s, l1_sep=';', l2_sep='='):
     return dct
 
 
-def dict_from_file(fd=sys.stdin, process=None):
+def dict_from_file(fd=sys.stdin, process=None, key_process=None, seperator='\t'):
     dct = {}
-    for line in foreach_line(fd):
-        sep = line.find('\t')
-        key = line[:sep]
-        raw_value = line[sep+1:]
-
-        value = None
-        if process is None:
-            value = '\t'.join(raw_value)
+    for row in foreach_row(fd, seperator=seperator):
+        if key_process:
+            key = key_process(row)
         else:
-            value = process(raw_value)
+            key = row[0]
+
+        if process:
+            value = process(row)
+        else:
+            value = '\t'.join(row[1:])
         dct[key] = value
     return dct
 
@@ -820,7 +917,36 @@ def CMD_test_conf(argv):
                 continue
         print 
 
+def CMD_xfind(argv):
+    '''
+    xfind: do set-operation in files.
+        load dict from file(B), read data from stdin(A), make set-operation(find, A_B)
+        xfind -f filename [-h] [-o <opeartion>] [-a --field_A] [-b --field_B] [-s --seperator <'\\t'>]
+    '''
+    a = Arg('load dict from file(B), read data from stdin(A), make set-operation(find, A_B)')
+    a.str_opt('filename', 'f', 'input key file as [B]')
+    a.str_opt('operation', 'o', 'operations, support find(A in B), A_B(A minus B)', default='find')
+    a.str_opt('field_A', 'a', 'which row of A(input stream) will be treated as key, start at 1', default='1') 
+    a.str_opt('field_B', 'b', 'which row of B(key_file) will be treated as key, start at 1', default='1') 
+    a.str_opt('seperator', 's', 'seperator, default is tab.', default='\t') 
+    opt = a.init_arg(argv)
+
+    field_B = int(opt.field_B) - 1
+    field_A = int(opt.field_A) - 1
+    keydict = dict_from_file(file(opt.filename), process=lambda x:'\t'.join(x), key_process=lambda x:x[field_B], seperator=opt.seperator)
+    logging.info('Dict loaded. size=%d' % len(keydict))
+    for row in foreach_row(sys.stdin, seperator=opt.seperator):
+        if len(row)<=field_A:
+            continue
+        if opt.operation == 'find':
+            if row[field_A] in keydict:
+                print opt.seperator.join(row)
+        elif opt.operation == 'A_B':
+            if row[field_A] not in keydict:
+                print opt.seperator.join(row)
+
 if __name__=='__main__':
+    logging.basicConfig(level=logging.INFO)
     '''
     pydev.py <command>
         command-list:
