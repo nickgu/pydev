@@ -3,6 +3,9 @@
 # gusimiu@baidu.com
 #   datemark: 20150428
 #   
+#   V1.1:
+#       add MailSender and Arg
+#
 #   V1.0.6 change::
 #       add xfind
 #       xfind: set operation. treat file as set.
@@ -23,6 +26,7 @@
 #       dump(self, stream, sort)
 #
 #   V1.0
+#       complete code.
 # 
 
 
@@ -39,6 +43,7 @@ import itertools
 import random
 import ConfigParser
 import argparse
+import json
 
 #import threading
 
@@ -50,6 +55,20 @@ DETECTIVE_MSG = 'Are_you_alive?'
 # Part I: pydev library implemention.
 #
 ##############################################################################
+
+class MailSender:
+    def __init__(self, sendmail='/usr/sbin/sendmail'):
+        self.__cmd = sendmail
+
+    def send(self, receiver, title, cont, sender='pydev.MailSender@nickgu.github.com'):
+        #p = os.popen('cat', 'w')
+        p = os.popen(self.__cmd + ' %s'%receiver, 'w')
+        print >> p, 'From: pydev.MailSender<%s>' % sender
+        print >> p, 'Sender: pydev.MailSender<%s>' % sender
+        print >> p, 'To: %s' % ','.join(map(lambda x:'%s'%(x), receiver.split(' ')))
+        print >> p, 'Subject: %s\n' % title
+        print >> p, cont
+        p.close()
 
 class RandomItemGenerator:
     '''
@@ -651,6 +670,25 @@ class ManagerService:
             f.write('%s\t%d\t%s\n' % (name, port, name))
         f.close()
 
+class CounterObject:
+    def __init__(self):
+        self.__keyvalue = dict()
+        self.__keyvalue['__tag__'] = []
+
+    def tag(self, t):
+        self.__keyvalue['__tag__'].append(t)
+
+    def kv(self, key, value):
+        if key not in self.__keyvalue:
+            self.__keyvalue[key] = []
+        self.__keyvalue[key].append(value)
+
+    def __str__(self):
+        return json.dumps(self.__keyvalue)
+
+    def loads(self, s):
+        self.__keyvalue = json.loads(s)
+
 class MapperCounter:
     def __init__(self):
         self.__dct = {}
@@ -944,6 +982,20 @@ def CMD_xfind(argv):
         elif opt.operation == 'A_B':
             if row[field_A] not in keydict:
                 print opt.seperator.join(row)
+
+def CMD_sendmail(argv):
+    '''
+    send a file as mail to somebody.
+    sendmail <receiver> <filename> <title>
+    '''
+    if len(argv)!=3:
+        print 'sendmail <receiver> <filename> <title>'
+        return 
+    receiver, filename, title = argv
+    s = MailSender()
+
+    content = ''.join(file(filename).readlines())
+    s.send(receiver, title, content)
 
 if __name__=='__main__':
     logging.basicConfig(level=logging.INFO)
