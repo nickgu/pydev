@@ -3,6 +3,9 @@
 # gusimiu@baidu.com
 #   datemark: 20150428
 #   
+#   V1.2:
+#       add FileProgress
+#
 #   V1.1:
 #       add MailSender and Arg
 #
@@ -55,6 +58,25 @@ DETECTIVE_MSG = 'Are_you_alive?'
 # Part I: pydev library implemention.
 #
 ##############################################################################
+
+class FileProgress:
+    def __init__(self, fd, name=None):
+        self.__fd = fd
+        self.__name = name
+
+        cur_pos = fd.tell()
+        fd.seek(0, 2)
+        self.__size = fd.tell()
+        fd.seek(cur_pos, 0)
+        print >> sys.stderr, 'FileProgress: File size reported: %d' % self.__size
+
+    def check_progress(self, report_interval=0.01):
+        if self.__size <= 0:
+            print >> sys.stderr, 'FileProgress: file is stream? I cannot report for stream file.'
+            return 0
+        cur = 1. * self.__fd.tell() / self.__size
+        sys.stderr.write('%cFileProgress: process [%s] of %.3f%% (%d/%d)' % (13, self.__name, cur*100., self.__fd.tell(), self.__size))
+        return cur
 
 class MailSender:
     def __init__(self, sendmail='/usr/sbin/sendmail'):
