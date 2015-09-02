@@ -63,6 +63,7 @@ class FileProgress:
     def __init__(self, fd, name=None):
         self.__fd = fd
         self.__name = name
+        self.__last_reported = 0
 
         cur_pos = fd.tell()
         fd.seek(0, 2)
@@ -70,12 +71,16 @@ class FileProgress:
         fd.seek(cur_pos, 0)
         print >> sys.stderr, 'FileProgress: File size reported: %d' % self.__size
 
-    def check_progress(self, report_interval=0.01):
+    def check_progress(self, report_interval=0.0005):
         if self.__size <= 0:
             print >> sys.stderr, 'FileProgress: file is stream? I cannot report for stream file.'
             return 0
         cur = 1. * self.__fd.tell() / self.__size
-        sys.stderr.write('%cFileProgress: process [%s] of %.3f%% (%d/%d)' % (13, self.__name, cur*100., self.__fd.tell(), self.__size))
+        if cur - self.__last_reported>report_interval:
+            temp_c = (int(cur*100) +3) / 4;
+            sys.stderr.write('%cFileProgress: process |%s>%s| [%s] of %.3f%% (%d/%d)' % (
+                13, '='*temp_c, ' '*(25-temp_c), self.__name, cur*100., self.__fd.tell(), self.__size))
+            self.__last_reported = cur
         return cur
 
 class MailSender:
