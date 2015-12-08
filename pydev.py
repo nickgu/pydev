@@ -62,6 +62,30 @@ DETECTIVE_MSG = 'Are_you_alive?'
 #
 ##############################################################################
 
+class SplitFileWriter:
+    def __init__(self, filename_prefix, records_each_file=50000, header=None):
+        self.__cur_id = 0
+        self.__rec_num = 0
+
+        self.__rec_each_file = records_each_file
+        self.__filename_prefix = filename_prefix
+        self.__header = header
+        self.__fd = None
+        self.__open_next()
+
+    def write(self, line):
+        print >> self.__fd, line
+        self.__rec_num += 1
+        if self.__rec_num >= self.__rec_each_file:
+            self.__open_next()
+
+    def __open_next(self):
+        self.__fd = file('%s.%d' % (self.__filename_prefix, self.__cur_id), 'w')
+        if self.__header:
+            print >> self.__fd, self.__header
+        self.__rec_num = 0
+        self.__cur_id += 1
+
 class DimInfo:
     def __init__(self, name=None):
         self.name = name
