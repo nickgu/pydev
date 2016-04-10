@@ -273,9 +273,7 @@ class VarConfig:
             return "%%(%s)s" % s.lower()
 
 class Arg(object):
-    '''这个类就是非常简单封装argparse的类。
-    使得更方便写而已
-    iname : 简写
+    '''
     Sample code:
         ag=pydev.Arg()
         ag.str_opt('f', 'file', 'this arg is for file')
@@ -287,19 +285,14 @@ class Arg(object):
         help = help.decode('utf-8').encode('gb18030')
         self.__parser = argparse.ArgumentParser(description=help)
         self.__args = None;
-        # 辅助设置调试参数：
         #    -l --log 
-        #        info : info级别调试
-        #        debug : debug级别调试
-        self.str_opt('log', 'l', '设置日志等级，和logging联动', 'error', meta='[debug|info|error]');
+        self.str_opt('log', 'l', 'logging level default=[error]', meta='[debug|info|error]');
     def __default_tip(self, default_value=None):
         if default_value==None:
             return ''
         return ' default=[%s]'%default_value
 
     def bool_opt(self, name, iname, help=''):
-        '''设置开关型配置
-        '''
         help = help.decode('utf-8').encode('gb18030')
         self.__parser.add_argument(
                 '-'+iname, 
@@ -311,8 +304,6 @@ class Arg(object):
         return
 
     def str_opt(self, name, iname, help='', default=None, meta=None):
-        '''设置字符串配置
-        '''
         help = (help + self.__default_tip(default)).decode('utf-8').encode('gb18030')
         self.__parser.add_argument(
                 '-'+iname, 
@@ -323,8 +314,6 @@ class Arg(object):
         pass
 
     def var_opt(self, name, meta='', help='', default=None):
-        '''不可丢变量
-        '''
         help = (help + self.__default_tip(default).decode('utf-8').encode('gb18030'))
         if meta=='':
             meta=name
@@ -516,9 +505,6 @@ class BasicService:
         self.__timer = seconds
 
     def run_with_name(self, name, desc='No description.', ip='127.0.0.1', port=12345):
-        '''
-            尝试和本机服务管理器建立映射关系
-        '''
         cmd = 'REGEDIT\t%s\t%d\t%s' % (name, port, desc)
         ret = simple_query(cmd, ip, port=8769)
         arr = ret.split('\t')
@@ -713,12 +699,7 @@ def __test_basic_service():
     svr.run_with_name('ECHO', desc='This is a echo service.')
 
 class MPProcessor:
-    '''多进程处理器
-    给定进程数、处理函数和并发度，自动调度
-    '''
     def __init__(self, functor, proc_num, stdout_dir='mp_out'):
-        '''设定进程数和并发度
-        '''
         self.functor = functor
         self.proc_num = proc_num
         self.processes = [];
@@ -734,10 +715,6 @@ class MPProcessor:
         return
 
     def _inner_func(self, cur_i):
-        '''
-        多进程壳函数，调用真正的函数。同时做一些基本处理 
-        '''
-        # 先进行重定向
         old_stdout = sys.stdout;
         out_fn = self.stdout_fn[cur_i];
         logging.info('Process[%d] reset stdout to %s'%(cur_i, out_fn));
@@ -801,10 +778,6 @@ class Timer:
             print >> stream, '[Timer]: %.3f(s) %s' % (self.cost_time(), qps_info)
 
 class MTItemProcessor(MPProcessor):
-    '''对一个item集合的多线程处理方式
-    给定set/list/dict等，和一个functor，即可分发到不同线程中调用
-    TODO: 待测试
-    '''
     def __init__(self, 
             proc_set, functor, proc_num, stdout_dir):
         MPProcessor.__init__(functor, proc_num, stdout_dir);
@@ -814,16 +787,12 @@ class MTItemProcessor(MPProcessor):
         return ;
     
     def _shell_functor(self, cur_i):
-        '''真实的内嵌函数，进行集合遍历并输出
-        '''
         for it in self.proc_set:
             if (id/7) % (self.proc_num+1) == cur_i:
                 # hit this processor.
                 self.inner_func(it);
 
     def merge_stdout(self):
-        '''把所有文件统一输出
-        '''
         logging.info('MTP: merge stdout');
         line_cnt = 0;
         for fn in self.stdout_fn:
