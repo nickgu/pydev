@@ -528,6 +528,15 @@ class Arg(object):
             self.is_parsed = True;
         return self.__args;
 
+def function_curve(min_x, min_y, interval, function):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    
+    x = np.arange(min_x, min_y, interval)
+    y = map(lambda x:function(x), x)
+    line, = plt.plot(x, y)
+    plt.show()
+
 
 def foreach_line(fd=sys.stdin, percentage=False):
     if percentage:
