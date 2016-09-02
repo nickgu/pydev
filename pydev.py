@@ -894,7 +894,6 @@ class MPProcessor:
             self.processes.append(Process(target=self._inner_func, args=(i, )));
             out_fn = './%s/part-%05d'%(self.stdout_dir, i)
             self.stdout_fn.append(out_fn);
-        # 补充一个thread num的FN
         out_fn = './%s/part-%05d'%(self.stdout_dir, self.proc_num)
         self.stdout_fn.append(out_fn);
         return
@@ -905,12 +904,10 @@ class MPProcessor:
         logging.info('Process[%d] reset stdout to %s'%(cur_i, out_fn));
         sys.stdout = open( out_fn, 'w' )
 
-        # 开始正式执行程序
         logging.info('Process[%d] begin to process.'%cur_i);
-        # 执行进程函数、给定i和文件
         self.functor(cur_i, self.proc_num);
 
-        sys.stdout = old_stdout; # 恢复bak stdout.
+        sys.stdout = old_stdout;
         logging.info('Process[%d] processes over.'%cur_i);
 
     def process_all(self):
@@ -965,15 +962,16 @@ class Timer:
 class MTItemProcessor(MPProcessor):
     def __init__(self, 
             proc_set, functor, proc_num, stdout_dir):
-        MPProcessor.__init__(functor, proc_num, stdout_dir);
+        MPProcessor.__init__(self, functor, proc_num, stdout_dir);
         self.proc_set = proc_set
         self.inner_func = functor
         self.functor = self._shell_functor
         return ;
     
-    def _shell_functor(self, cur_i):
+    def _shell_functor(self, cur_i, proc_num):
+        print >> sys.stderr, 'Process: %d' % cur_i
         for it in self.proc_set:
-            if (id/7) % (self.proc_num+1) == cur_i:
+            if it % self.proc_num == cur_i:
                 # hit this processor.
                 self.inner_func(it);
 
