@@ -973,7 +973,10 @@ class MTItemProcessor(MPProcessor):
         for it in self.proc_set:
             if it % self.proc_num == cur_i:
                 # hit this processor.
-                self.inner_func(it);
+                try:
+                    self.inner_func(it);
+                except Exception, e:
+                    print >> sys.stderr, e 
 
     def merge_stdout(self):
         logging.info('MTP: merge stdout');
