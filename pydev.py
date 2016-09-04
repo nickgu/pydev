@@ -298,6 +298,9 @@ def config_default_get(cp, section, option, default_value=None):
         return cp.get(section, option)
     return default_value
 
+def err(l):
+    print >> sys.stderr, l
+
 class VarConfig:
     def __init__(self):
         self.__config = {}
