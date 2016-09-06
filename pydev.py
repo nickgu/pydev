@@ -3,8 +3,11 @@
 # gusimiu@baidu.com
 #   datemark: 20150428
 #   
+#   V1.5:
+#       add png_to_array
+#
 #   V1.4:
-#       add zip_channel
+#       add zip_channel, index_to_one_hot
 #
 #   V1.3:
 #       add DimAnalysis
@@ -301,6 +304,7 @@ def config_default_get(cp, section, option, default_value=None):
         return cp.get(section, option)
     return default_value
 
+
 def index_to_one_hot(data_in, dim):
     import numpy as np
     data_out = np.ndarray( (len(data_in), dim) )
@@ -325,6 +329,28 @@ def zip_channel(im, channel_num):
         for c in range(channel_num):
             new_im[i * channel_num + c] = im[c*img_size + i]
     return new_im
+
+
+def show_image(data):
+    import matplotlib.pyplot as plt
+    import matplotlib.cm as cm
+
+    plt.axis('off')
+    plt.imshow(data)
+    plt.show()
+
+def png_to_array(fd):
+    '''
+        transform a png file to np.array
+        need pypng, numpy.
+    '''
+    import png
+    import numpy
+    row, col, data, meta = png.Reader(fd).asRGB()
+
+    ans = numpy.array( list(data) )
+    ans = ans.reshape( (row, col, 3) )
+    return ans
 
 def err(l):
     print >> sys.stderr, l
