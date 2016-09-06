@@ -3,6 +3,9 @@
 # gusimiu@baidu.com
 #   datemark: 20150428
 #   
+#   V1.4:
+#       add zip_channel
+#
 #   V1.3:
 #       add DimAnalysis
 #
@@ -297,6 +300,22 @@ def config_default_get(cp, section, option, default_value=None):
     if cp.has_option(section, option):
         return cp.get(section, option)
     return default_value
+
+def zip_channel(im, channel_num):
+    # for plt.imshow()
+    #   input:  [ r, r, ..., g, g, .., b, b, ..]
+    #   output: [ r, g, b, r, g, b, ..., r, g, b ]
+    import numpy as np
+
+    new_im = np.array(im)
+    if im.shape[0] % channel_num != 0:
+        raise Exception('Channel cannot be divided by shape [%d]' 
+                        % im.shape[0])
+    img_size = im.shape[0] / channel_num
+    for i in range(img_size):
+        for c in range(channel_num):
+            new_im[i * channel_num + c] = im[c*img_size + i]
+    return new_im
 
 def err(l):
     print >> sys.stderr, l
