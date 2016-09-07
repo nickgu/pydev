@@ -306,12 +306,15 @@ def config_default_get(cp, section, option, default_value=None):
 
 
 def index_to_one_hot(data_in, dim):
+    '''
+        data_in : [a, b, c, d ... ]
+        data_out : [[0,...,1,...], [...], ...]
+    '''
     import numpy as np
     data_out = np.ndarray( (len(data_in), dim) )
     data_out.fill(0)
     for idx, v in enumerate(data_in):
         data_out[idx][v] = 1.
-    data_out = np.array(data_out)
     return data_out
 
 def zip_channel(im, channel_num):
