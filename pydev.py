@@ -56,6 +56,7 @@ import random
 import ConfigParser
 import argparse
 import json
+import cPickle as cp
 
 #import threading
 
@@ -67,6 +68,55 @@ DETECTIVE_MSG = 'Are_you_alive?'
 # Part I: pydev library implemention.
 #
 ##############################################################################
+
+class TempStorage:
+    '''
+        Temperory store the program data.
+        Usage:
+            ts = TempStorage(sign='# your sign for each run.', filename=filename)
+            if ts.has_data():
+                # load data from ts.
+                m = ts.read()
+                n = ts.read()
+                ...
+            else:
+                # do initialize calculation.
+                ...
+                # then serialize to ts.
+                ts.write(m)
+                ts.write(n)
+                ...
+    '''
+    def __init__(self, sign, filename):
+        # try to catch data.
+        self.__has_data = False
+        self.__sign = sign
+
+        try:
+            self.__fd = open(filename, 'r')
+            filesign = self.read()
+            if filesign == sign:
+                # okay, matched.
+                print >> sys.stderr, 'Data is in tempStorage.'
+                self.__has_data = True
+                return 
+            else:
+                print >> sys.stderr, 'File exists, but not match sign:[%s]!=[%s]' % (filesign, sign) 
+        except:
+            print >> sys.stderr, 'Data is not ready [%s] for sign [%s]' % (filename, sign)
+
+        self.__has_data = False
+        self.__fd = open(filename, 'w')
+        self.write(self.__sign)
+
+    def has_data(self):
+        return self.__has_data
+    
+    def write(self, obj):
+        return cp.dump(obj, self.__fd)
+
+    def read(self):
+        return cp.load(self.__fd)
 
 class StringTable:
     def __init__(self, col, sep_col='\t', sep_row='\n', makeup=True):
