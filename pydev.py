@@ -3,6 +3,9 @@
 # gusimiu@baidu.com
 #   datemark: 20150428
 #   
+#   V1.6:
+#       add TempStorage.
+#
 #   V1.5:
 #       add png_to_array
 #
