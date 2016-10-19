@@ -357,6 +357,14 @@ def config_default_get(cp, section, option, default_value=None):
         return cp.get(section, option)
     return default_value
 
+def config_dict_get(cp, section, option, mapping_dict, default_key=None):
+    if cp.has_option(section, option):
+        key = cp.get(section, option)
+        if key not in mapping_dict:
+            raise Exception('configure [%s.%s] is set, but key(%s) not in dict [%s]' % (
+                section, option, key, ','.join(mapping_dict.keys()) ) )
+        return mapping_dict[key]
+    return mapping_dict[default_key]
 
 def index_to_one_hot(data_in, dim):
     '''
@@ -409,6 +417,9 @@ def png_to_array(fd):
     return ans
 
 def err(l):
+    print >> sys.stderr, l
+
+def log(l):
     print >> sys.stderr, l
 
 class VarConfig:
