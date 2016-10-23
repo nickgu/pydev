@@ -416,6 +416,19 @@ def png_to_array(fd):
     ans = ans.reshape( (row, col, 3) )
     return ans
 
+def format_time(tm):
+    # format time by time.time()
+    #  print format_time(time.time())
+    # output sample:
+    #   5h4, 5m2, 23s
+    if tm > 3600:
+        return '%dh%d' % (tm//3600, tm%3600/60)
+    elif tm > 60:
+        return '%dm%d' % (tm//60, tm%60)
+    else:
+        return '%ds' % (tm)
+
+
 def err(l):
     print >> sys.stderr, l
 
