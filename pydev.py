@@ -259,6 +259,38 @@ class DimInfo:
         for key, (ratio, score) in sorted(self.distribution.iteritems(), key=lambda x:-x[1][0]):
             print >> stream, '%30s\t%8.3f\t%5.1f%%' % (key, score, ratio*100.)
 
+class ProgressBar:
+    def __init__(self): 
+        self.__name = None
+        self.__percentage = 0.0
+        self.__vol = 0.0
+        self.__total = 100.0
+
+    def __progress_info(self):
+        return '[%s] [%s>%s] [ %3.3f%% ]' % (
+                self.__name, 
+                '='*int(self.__percentage), 
+                ' '*(99-int(self.__percentage)),
+                self.__percentage
+            )
+
+    def start(self, name, total=100.0, stream=sys.stderr):
+        self.__name = name
+        self.__percentage = 0
+        self.__vol = 0.0
+        self.__total = total
+        self.__stream = stream
+        self.__stream.write(self.__progress_info())
+
+    def inc(self, vol):
+        self.__vol += vol
+        self.__percentage = 100.0 * self.__vol / self.__total
+        self.__stream.write('%c%s' % (13, self.__progress_info()))
+
+        if self.__vol >= self.__total:
+            self.__stream.write('\n')
+        
+
 class FileProgress:
     def __init__(self, fd, name=None):
         self.__fd = fd
