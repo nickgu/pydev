@@ -72,6 +72,47 @@ DETECTIVE_MSG = 'Are_you_alive?'
 #
 ##############################################################################
 
+class ColorString:
+    TC_NONE         ="\033[m"
+    TC_RED          ="\033[0;32;31m"
+    TC_LIGHT_RED    ="\033[1;31m"
+    TC_GREEN        ="\033[0;32;32m"
+    TC_LIGHT_GREEN  ="\033[1;32m"
+    TC_BLUE         ="\033[0;32;34m"
+    TC_LIGHT_BLUE   ="\033[1;34m"
+    TC_DARY_GRAY    ="\033[1;30m"
+    TC_CYAN         ="\033[0;36m"
+    TC_LIGHT_CYAN   ="\033[1;36m"
+    TC_PURPLE       ="\033[0;35m"
+    TC_LIGHT_PURPLE ="\033[1;35m"
+    TC_BROWN        ="\033[0;33m"
+    TC_YELLOW       ="\033[1;33m"
+    TC_LIGHT_GRAY   ="\033[0;37m"
+    TC_WHITE        ="\033[1;37m"
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def colors(s, color):
+       return color + s + ColorString.TC_NONE  
+
+    @staticmethod
+    def red(s): return ColorString.colors(s, ColorString.TC_RED)
+
+    @staticmethod
+    def yellow(s): return ColorString.colors(s, ColorString.TC_YELLOW)
+
+    @staticmethod
+    def green(s): return ColorString.colors(s, ColorString.TC_GREEN)
+
+    @staticmethod
+    def blue(s): return ColorString.colors(s, ColorString.TC_BLUE)
+
+    @staticmethod
+    def cyan(s): return ColorString.colors(s, ColorString.TC_CYAN)
+
+
 class TempStorage:
     '''
         Temperory store the program data.
