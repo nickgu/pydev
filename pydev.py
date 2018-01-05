@@ -84,7 +84,7 @@ class App:
             ops = []
             for item in sys.argv:
                 if item.startswith('--op:'):
-                    ops = item.replace('--op:').split(',')
+                    ops = item.replace('--op:', '').split(',')
                     break
 
         print >> sys.stderr, 'ops = [%s]' % ('|'.join(ops))
