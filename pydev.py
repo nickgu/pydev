@@ -3,6 +3,10 @@
 # gusimiu@baidu.com
 #   datemark: 20150428
 #   
+#   V1.7:
+#       Add color string 
+#       Add App.
+#
 #   V1.6:
 #       add TempStorage.
 #
@@ -71,6 +75,28 @@ DETECTIVE_MSG = 'Are_you_alive?'
 # Part I: pydev library implemention.
 #
 ##############################################################################
+
+class App:
+    def __init__(self): pass
+
+    def run(self, ops=None):
+        if ops is None:
+            ops = []
+            for item in sys.argv:
+                if item.startswith('--op:'):
+                    ops = item.replace('--op:').split(',')
+                    break
+
+        print >> sys.stderr, 'ops = [%s]' % ('|'.join(ops))
+            
+        for op in ops:
+            try:
+                func = getattr(self, op)
+            except:
+                print >> sys.stderr, '[ %s ] Not found' % op
+                continue
+            print >> sys.stderr, 'Run [ %s ]' % op
+            func()
 
 class ColorString:
     TC_NONE         ="\033[m"
