@@ -63,6 +63,7 @@ import random
 import ConfigParser
 import argparse
 import json
+import datetime
 import cPickle as cp
 
 #import threading
@@ -75,6 +76,23 @@ DETECTIVE_MSG = 'Are_you_alive?'
 # Part I: pydev library implemention.
 #
 ##############################################################################
+
+def parse_date(str_date):
+    return datetime.date(year=int(str_date[:4]), month=int(str_date[4:6]), day=int(str_date[6:8]))
+
+
+def date_range(begin_date, end_date, include_end=False):
+    one_day = datetime.timedelta(days = 1)
+    while begin_date != end_date:
+        yield begin_date.strftime('%Y%m%d')
+        begin_date += one_day
+    if include_end:
+        yield end_date.strftime('%Y%m%d')
+
+def parse_date_range(str_begin_date, str_end_date, include_end=False):
+    begin_date = parse_date(str_begin_date)
+    end_date = parse_date(str_end_date)
+    return date_range(begin_date, end_date, include_end)
 
 class App:
     def __init__(self): pass

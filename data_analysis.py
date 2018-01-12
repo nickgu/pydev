@@ -19,7 +19,7 @@ class RocRecorder:
     def plot(self, bucket_num=20, descending=True):
         total_target = sum(map(lambda x:x[1], self.data))
 
-        print >> sys.stderr, 'Begin sorteing.. (num=%d, total_target=%.2f)' % (len(self.data), total_target)
+        print >> sys.stderr, 'Begin sorting.. (num=%d, total_target=%.2f)' % (len(self.data), total_target)
         if descending:
             data = sorted(self.data, key=lambda x:-x[0])
         else:
@@ -30,7 +30,7 @@ class RocRecorder:
         acc_target = 0
         print 'bucket\tper_x\tx_value\troc_y'
         for idx, (x, y) in enumerate(data):
-            per = idx * 1.0 / len(data)
+            per = (idx + 1) * 1.0 / len(data)
             acc_target += y
             if per >= (bucket+1.0) / bucket_num:
                 bucket += 1
