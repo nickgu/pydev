@@ -77,6 +77,17 @@ DETECTIVE_MSG = 'Are_you_alive?'
 #
 ##############################################################################
 
+class CommonServicePageMaker:
+    def __init__(self):
+        self.tabs = []
+
+    def add_tabs(self, tabname, content):
+        self.tabs.append( (tabname, content) )
+
+    def response(self):
+        return '\1\1\1'.join(map(lambda x: '%s\1%s'%(x[0], x[1]), self.tabs))
+
+
 def parse_date(str_date):
     return datetime.date(year=int(str_date[:4]), month=int(str_date[4:6]), day=int(str_date[6:8]))
 
