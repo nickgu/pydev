@@ -81,7 +81,7 @@ class CommonServicePageMaker:
     def __init__(self):
         self.tabs = []
 
-    def add_tabs(self, tabname, content):
+    def add_tab(self, tabname, content):
         self.tabs.append( (tabname, content) )
 
     def response(self):
@@ -104,6 +104,7 @@ def parse_date_range(str_begin_date, str_end_date, include_end=False):
     begin_date = parse_date(str_begin_date)
     end_date = parse_date(str_end_date)
     return date_range(begin_date, end_date, include_end)
+
 
 class App:
     def __init__(self): pass
@@ -320,15 +321,18 @@ class FileProgress:
         fd.seek(cur_pos, 0)
         print >> sys.stderr, 'FileProgress: File size reported: %d' % self.__size
 
-    def check_progress(self, report_interval=0.0005):
+    def check_progress(self, info=None, report_interval=0.0005):
         if self.__size <= 0:
             print >> sys.stderr, 'FileProgress: file is stream? I cannot report for stream file.'
             return 0
         cur = 1. * self.__fd.tell() / self.__size
         if cur - self.__last_reported>report_interval:
             temp_c = (int(cur*100) +3) / 4;
-            sys.stderr.write('%cFileProgress: process |%s>%s| [%s] of %.3f%% (%d/%d)' % (
-                13, '='*temp_c, ' '*(25-temp_c), self.__name, cur*100., self.__fd.tell(), self.__size))
+            info_s = ''
+            if info:
+                info_s = '[ %s ]' % info
+            sys.stderr.write('%cFileProgress: process |%s>%s| [%s] of %.3f%% (%d/%d) %s' % (
+                13, '='*temp_c, ' '*(25-temp_c), self.__name, cur*100., self.__fd.tell(), self.__size, info_s))
             self.__last_reported = cur
         return cur
 
@@ -724,17 +728,22 @@ def function_curve(min_x, min_y, interval, function):
     plt.show()
 
 
-def foreach_line(fd=sys.stdin, percentage=False):
+def foreach_line(fd=sys.stdin, percentage=False, reporter=False):
     if percentage:
         cur_pos = fd.tell()
         fd.seek(0, 2)
         file_size = fd.tell()
         fd.seek(cur_pos)
         old_perc = 0
+
+    counter = 0
     while 1:
         line = fd.readline()
         if line == '':
             break
+
+        if reporter:
+            sys.stderr.write('%c%d line(s) processing%s' % (13, counter, '.' * (counter % 6)))
         if percentage:
             cur_pos = fd.tell()
             perc = int(100.0 * cur_pos / file_size)
@@ -745,17 +754,22 @@ def foreach_line(fd=sys.stdin, percentage=False):
         yield line.strip('\n')
 
 
-def foreach_row(fd=sys.stdin, min_fields_num=-1, seperator='\t', percentage=False):
+def foreach_row(fd=sys.stdin, min_fields_num=-1, seperator='\t', percentage=False, reporter=False):
     if percentage:
         cur_pos = fd.tell()
         fd.seek(0, 2)
         file_size = fd.tell()
         fd.seek(cur_pos)
         old_perc = 0
+
+    counter = 0
     while 1:
         line = fd.readline()
+        counter += 1
         if line == '':
             break
+        if reporter:
+            sys.stderr.write('%c%d line(s) processing%s' % (13, counter, '.' * (counter % 6)))
         if percentage:
             cur_pos = fd.tell()
             perc = int(100.0 * cur_pos / file_size)
