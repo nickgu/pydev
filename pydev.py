@@ -77,6 +77,7 @@ DETECTIVE_MSG = 'Are_you_alive?'
 #
 ##############################################################################
 
+
 class CommonServicePageMaker:
     def __init__(self):
         self.tabs = []

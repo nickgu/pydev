@@ -9,6 +9,31 @@ import traceback
 import sys
 import pydev
 
+def beta_range(disp, click, prob=0.95):
+    from scipy.stats import beta
+    return beta_bound(disp, click, (1-prob)*0.5), beta_bound(disp, click, prob+(1-prob)*0.5)
+
+def beta_bound(disp, click, prob=0.05):
+    from scipy.stats import beta
+    return beta.ppf( prob, click, disp-click-1)
+
+class AverageValue:
+    def __init__(self):
+        self.value = 0
+        self.count = 0
+
+    def add(self, value):
+        self.count += 1
+        self.value += value
+
+    def average(self):
+        if self.count == 0 :
+            return 0
+        return self.value *1.0 / self.count
+
+    def __str__(self):
+        return '%.3f (%d totals)' % (self.average(), self.count)
+
 class RocRecorder:
     def __init__(self):
         self.data = []
