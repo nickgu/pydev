@@ -77,6 +77,27 @@ DETECTIVE_MSG = 'Are_you_alive?'
 #
 ##############################################################################
 
+class PlotTracker:
+    '''
+        Tracker for learner to trace curve like (iter, loss),
+        and then plot it in ipy-notebook or matplotlib
+    '''
+    def __init__(self):
+        self.X = []
+        self.Y = []
+
+    def add(self, iter, value):
+        self.X.append(iter)
+        self.Y.append(value)
+
+    def save(self, fd):
+        cp.dump(self.X, fd)
+        cp.dump(self.Y, fd)
+
+    def load(self, fd):
+        self.X = cp.load(fd)
+        self.Y = cp.load(fd)
+
 
 class CommonServicePageMaker:
     def __init__(self):
