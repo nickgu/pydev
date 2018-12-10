@@ -3,6 +3,10 @@
 # gusimiu@baidu.com
 #   datemark: 20150428
 #   
+#   V1.8:
+#       Add tuple transformer to parse tuple by string format.
+#       foreach_row support string format.
+#
 #   V1.7:
 #       Add color string 
 #       Add App.
@@ -108,6 +112,18 @@ class CommonServicePageMaker:
 
     def response(self):
         return '\1\1\1'.join(map(lambda x: '%s\1%s'%(x[0], x[1]), self.tabs))
+
+def tuple_tranformer(format):
+    transformer = []
+    for ch in format:
+        if ch == 's':
+            transformer.append(str)
+        elif ch == 'f':
+            transformer.append(float)
+        elif ch == 'i':
+            transformer.append(int)
+
+    return lambda tup: [form(item) for item, form in zip(tup, transformer)]
 
 
 def parse_date(str_date):
@@ -776,7 +792,17 @@ def foreach_line(fd=sys.stdin, percentage=False, reporter=False):
         yield line.strip('\n')
 
 
-def foreach_row(fd=sys.stdin, min_fields_num=-1, seperator='\t', percentage=False, reporter=False):
+def foreach_row(fd=sys.stdin, 
+        min_fields_num=-1, 
+        seperator='\t', 
+        format=None,
+        percentage=False, 
+        reporter=False):
+
+    format_func = None
+    if format:
+        format_func = tuple_tranformer(format)
+
     if percentage:
         cur_pos = fd.tell()
         fd.seek(0, 2)
@@ -802,7 +828,11 @@ def foreach_row(fd=sys.stdin, min_fields_num=-1, seperator='\t', percentage=Fals
         arr = line.strip('\n').split(seperator)
         if min_fields_num>0 and len(arr)<min_fields_num:
             continue
-        yield arr
+        if format_func is None:
+            yield arr
+        else:
+            yield format_func(arr)
+
 
 def dict_from_str(s, l1_sep=';', l2_sep='='):
     dct = {}

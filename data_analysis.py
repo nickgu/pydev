@@ -15,7 +15,27 @@ def beta_range(disp, click, prob=0.95):
 
 def beta_bound(disp, click, prob=0.05):
     from scipy.stats import beta
-    return beta.ppf( prob, click, disp-click-1)
+    return beta.ppf(prob, click, disp-click-1)
+
+def bucket_distribution(data, begin, step):
+    '''
+        return distribution of data:
+        return type:
+            [(begin, end, count, ratio), ... ] # bucket num.
+    '''
+    stat_dict = {}
+    for x in data:
+        idx = int((x - begin) / step)
+        if idx not in stat_dict:
+            stat_dict[idx] = 0
+        stat_dict[idx] += 1
+
+    total_num = len(data)
+    dist = map(lambda x:(x[0]*step+begin, (x[0]+1)*step+begin, x[1], x[1]*1./total_num), 
+            sorted(stat_dict.iteritems(), key=lambda x:x[0]))
+    return dist
+    
+
 
 class AverageValue:
     def __init__(self):
