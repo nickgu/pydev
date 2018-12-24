@@ -166,6 +166,33 @@ class App:
             print >> sys.stderr, 'Run [ %s ]' % op
             func()
 
+class InteractiveApp:
+    def __init__(self, prompt='command'):
+        self.prompt = prompt
+
+    def echo(self, args):
+        sys.stdout.write(args + '\n') 
+
+    def run(self):
+        while True:
+            try:
+                # general command format:
+                #   <cmd> <args>
+                sys.stdout.write( '%s> ' % self.prompt )
+                cmd = sys.stdin.readline().strip()
+
+                arr = cmd.split(' ')
+                op = arr[0]
+                args = ' '.join(arr[1:])
+                
+                func = getattr(self, op)
+                print >> sys.stderr, 'op=%s' % op
+                func(args)
+
+            except Exception, e:
+                err('runtime error: %s' % str(e)) 
+
+
 class ColorString:
     TC_NONE         ="\033[m"
     TC_RED          ="\033[0;32;31m"
