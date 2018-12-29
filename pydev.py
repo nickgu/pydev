@@ -3,6 +3,9 @@
 # gusimiu@baidu.com
 #   datemark: 20150428
 #   
+#   V1.9:
+#       Add AutoArg for smart arg parsing.
+#
 #   V1.8:
 #       Add tuple transformer to parse tuple by string format.
 #       foreach_row support string format.
@@ -550,6 +553,9 @@ def format_time(tm):
 def err(l):
     print >> sys.stderr, l
 
+def info(l):
+    print >> sys.stderr, l
+
 def log(l):
     print >> sys.stderr, l
 
@@ -702,6 +708,54 @@ class VarConfig:
             return match.group()
         else:
             return "%%(%s)s" % s.lower()
+
+class AutoArg:
+    def __init__(self):
+        import sys
+        self.__argv = sys.argv
+        self.__argset = set(map(lambda x:self.__get_key(x), self.__argv))
+        self.__arg_dict = {}
+
+        key = None
+        value = []
+        for arg in self.__argv:
+            if arg.startswith('-'):
+                if key:
+                    self.__arg_dict[key] = value
+                
+                value = []
+                if ':' in arg:
+                    a = arg.split(':')
+                    arg = a[0]
+                    value += a[1:]
+
+                key = self.__get_key(arg)
+            else:
+                value.append(arg)
+
+        if key:
+            self.__arg_dict[key] = value
+
+    def __get_key(self, x):
+        key = x
+        if x.startswith('--'):
+            key = x[2:]
+        elif x.startswith('-'):
+            key = x[1:]
+        return key
+
+    def has(self, key):
+        return (key in self.__argset)
+
+    def option(self, key):
+        return self.__arg_dict.get(key, None)
+
+    def debug(self):
+        info('debug arg_set:')
+        info('%s' % self.__argset)
+        info('debug arg_kv:')
+        for key, value in self.__arg_dict.iteritems():
+            info(' - %s : %s' % (key, value))
 
 class Arg(object):
     '''
@@ -1430,6 +1484,10 @@ def CMD_sendmail(argv):
 
     content = ''.join(file(filename).readlines())
     s.send(receiver, title, content)
+
+def CMD_autoarg(argv):
+    auto_arg = AutoArg()
+    auto_arg.debug()
 
 if __name__=='__main__':
     logging.basicConfig(level=logging.INFO)
