@@ -17,22 +17,34 @@ def beta_bound(disp, click, prob=0.05):
     from scipy.stats import beta
     return beta.ppf(prob, click, disp-click-1)
 
-def bucket_distribution(data, begin, step):
+def bucket_distribution(data, begin, step, end=None):
     '''
         return distribution of data:
         return type:
             [(begin, end, count, ratio), ... ] # bucket num.
     '''
+    min_count = 0
+    max_count = 0
     stat_dict = {}
     for x in data:
-        idx = int((x - begin) / step)
-        if idx not in stat_dict:
-            stat_dict[idx] = 0
-        stat_dict[idx] += 1
+        if x < begin:
+            min_count += 1
+        elif x > end:
+            max_count += 1
+        else:
+            idx = int((x - begin) / step)
+            if idx not in stat_dict:
+                stat_dict[idx] = 0
+            stat_dict[idx] += 1
 
     total_num = len(data)
     dist = map(lambda x:(x[0]*step+begin, (x[0]+1)*step+begin, x[1], x[1]*1./total_num), 
             sorted(stat_dict.iteritems(), key=lambda x:x[0]))
+    if min_count > 0:
+        dist = [('-inf', begin, min_count, min_count *1. / total_num)] + dist
+    if max_count > 0:
+        dist.append( (end, 'inf', max_count, max_count *1. / total_num) )
+
     return dist
     
 
