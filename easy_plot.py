@@ -10,7 +10,6 @@ def distribution_bar(plt, data, begin, step, end, x_gap=1, format='b', label='Di
     import pyda
     
     dist = pyda.bucket_distribution(data, begin, step, end)
-    print dist
     ticks = map(lambda x:x[0], dist)
     ratios = map(lambda x:x[3], dist)
 
