@@ -714,6 +714,7 @@ class AutoArg:
         import sys
         self.__argv = sys.argv
         self.__argset = set(map(lambda x:self.__get_key(x), self.__argv))
+        # key: [values, ..]
         self.__arg_dict = {}
 
         key = None
@@ -747,8 +748,23 @@ class AutoArg:
     def has(self, key):
         return (key in self.__argset)
 
-    def option(self, key):
-        return self.__arg_dict.get(key, None)
+    def option(self, key, default=None):
+        # get single option, join list with ','
+        if key not in self.__arg_dict:
+            info('arg option [%s] is not set, use [%s] as default' % (key, default))
+            return default
+        value = ','.join(self.__arg_dict[key])
+        info('arg option [%s] : [%s]' % (key, value)
+        return value
+
+    def options(self, key, default=None):
+        # get single option, join list with ','
+        if key not in self.__arg_dict:
+            info('arg option [%s] is not set, use [%s] as default' % (key, default))
+            return default
+        value = self.__arg_dict[key]
+        info('arg option [%s] : [%s]' % (key, value)
+        return value
 
     def debug(self):
         info('debug arg_set:')
