@@ -754,7 +754,7 @@ class AutoArg:
             info('arg option [%s] is not set, use [%s] as default' % (key, default))
             return default
         value = ','.join(self.__arg_dict[key])
-        info('arg option [%s] : [%s]' % (key, value)
+        info('arg option [%s] : [%s]' % (key, value))
         return value
 
     def options(self, key, default=None):
@@ -763,7 +763,7 @@ class AutoArg:
             info('arg option [%s] is not set, use [%s] as default' % (key, default))
             return default
         value = self.__arg_dict[key]
-        info('arg option [%s] : [%s]' % (key, value)
+        info('arg option [%s] : [%s]' % (key, value))
         return value
 
     def debug(self):
