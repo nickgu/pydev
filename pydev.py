@@ -3,6 +3,13 @@
 # gusimiu@baidu.com
 #   datemark: 20150428
 #   
+#   V1.9:
+#       Add AutoArg for smart arg parsing.
+#
+#   V1.8:
+#       Add tuple transformer to parse tuple by string format.
+#       foreach_row support string format.
+#
 #   V1.7:
 #       Add color string 
 #       Add App.
@@ -77,15 +84,49 @@ DETECTIVE_MSG = 'Are_you_alive?'
 #
 ##############################################################################
 
+class PlotTracker:
+    '''
+        Tracker for learner to trace curve like (iter, loss),
+        and then plot it in ipy-notebook or matplotlib
+    '''
+    def __init__(self):
+        self.X = []
+        self.Y = []
+
+    def add(self, iter, value):
+        self.X.append(iter)
+        self.Y.append(value)
+
+    def save(self, fd):
+        cp.dump(self.X, fd)
+        cp.dump(self.Y, fd)
+
+    def load(self, fd):
+        self.X = cp.load(fd)
+        self.Y = cp.load(fd)
+
+
 class CommonServicePageMaker:
     def __init__(self):
         self.tabs = []
 
-    def add_tabs(self, tabname, content):
+    def add_tab(self, tabname, content):
         self.tabs.append( (tabname, content) )
 
     def response(self):
         return '\1\1\1'.join(map(lambda x: '%s\1%s'%(x[0], x[1]), self.tabs))
+
+def tuple_tranformer(format):
+    transformer = []
+    for ch in format:
+        if ch == 's':
+            transformer.append(str)
+        elif ch == 'f':
+            transformer.append(float)
+        elif ch == 'i':
+            transformer.append(int)
+
+    return lambda tup: [form(item) for item, form in zip(tup, transformer)]
 
 
 def parse_date(str_date):
@@ -104,6 +145,7 @@ def parse_date_range(str_begin_date, str_end_date, include_end=False):
     begin_date = parse_date(str_begin_date)
     end_date = parse_date(str_end_date)
     return date_range(begin_date, end_date, include_end)
+
 
 class App:
     def __init__(self): pass
@@ -126,6 +168,33 @@ class App:
                 continue
             print >> sys.stderr, 'Run [ %s ]' % op
             func()
+
+class InteractiveApp:
+    def __init__(self, prompt='command'):
+        self.prompt = prompt
+
+    def echo(self, args):
+        sys.stdout.write(args + '\n') 
+
+    def run(self):
+        while True:
+            try:
+                # general command format:
+                #   <cmd> <args>
+                sys.stdout.write( '%s> ' % self.prompt )
+                cmd = sys.stdin.readline().strip()
+
+                arr = cmd.split(' ')
+                op = arr[0]
+                args = ' '.join(arr[1:])
+                
+                func = getattr(self, op)
+                print >> sys.stderr, 'op=%s' % op
+                func(args)
+
+            except Exception, e:
+                err('runtime error: %s' % str(e)) 
+
 
 class ColorString:
     TC_NONE         ="\033[m"
@@ -320,15 +389,18 @@ class FileProgress:
         fd.seek(cur_pos, 0)
         print >> sys.stderr, 'FileProgress: File size reported: %d' % self.__size
 
-    def check_progress(self, report_interval=0.0005):
+    def check_progress(self, info=None, report_interval=0.0005):
         if self.__size <= 0:
             print >> sys.stderr, 'FileProgress: file is stream? I cannot report for stream file.'
             return 0
         cur = 1. * self.__fd.tell() / self.__size
         if cur - self.__last_reported>report_interval:
             temp_c = (int(cur*100) +3) / 4;
-            sys.stderr.write('%cFileProgress: process |%s>%s| [%s] of %.3f%% (%d/%d)' % (
-                13, '='*temp_c, ' '*(25-temp_c), self.__name, cur*100., self.__fd.tell(), self.__size))
+            info_s = ''
+            if info:
+                info_s = '[ %s ]' % info
+            sys.stderr.write('%cFileProgress: process |%s>%s| [%s] of %.3f%% (%d/%d) %s' % (
+                13, '='*temp_c, ' '*(25-temp_c), self.__name, cur*100., self.__fd.tell(), self.__size, info_s))
             self.__last_reported = cur
         return cur
 
@@ -480,6 +552,9 @@ def format_time(tm):
 
 def err(l):
     print >> sys.stderr, '[Error] ' + str(l)
+
+def info(l):
+    print >> sys.stderr, l
 
 def log(l):
     print >> sys.stderr, '[Info] ' + str(l)
@@ -637,6 +712,70 @@ class VarConfig:
         else:
             return "%%(%s)s" % s.lower()
 
+class AutoArg:
+    def __init__(self):
+        import sys
+        self.__argv = sys.argv
+        self.__argset = set(map(lambda x:self.__get_key(x), self.__argv))
+        # key: [values, ..]
+        self.__arg_dict = {}
+
+        key = None
+        value = []
+        for arg in self.__argv:
+            if arg.startswith('-'):
+                if key:
+                    self.__arg_dict[key] = value
+                
+                value = []
+                if ':' in arg:
+                    a = arg.split(':')
+                    arg = a[0]
+                    value += a[1:]
+
+                key = self.__get_key(arg)
+            else:
+                value.append(arg)
+
+        if key:
+            self.__arg_dict[key] = value
+
+    def __get_key(self, x):
+        key = x
+        if x.startswith('--'):
+            key = x[2:]
+        elif x.startswith('-'):
+            key = x[1:]
+        return key
+
+    def has(self, key):
+        return (key in self.__argset)
+
+    def option(self, key, default=None):
+        # get single option, join list with ','
+        if key not in self.__arg_dict:
+            info('arg option [%s] is not set, use [%s] as default' % (key, default))
+            return default
+        value = ','.join(self.__arg_dict[key])
+        info('arg option [%s] : [%s]' % (key, value))
+        return value
+
+    def options(self, key, default=None):
+        # get single option, join list with ','
+        if key not in self.__arg_dict:
+            info('arg option [%s] is not set, use [%s] as default' % (key, default))
+            return default
+        value = self.__arg_dict[key]
+        info('arg option [%s] : [%s]' % (key, value))
+        return value
+
+    def debug(self):
+        info('debug arg_set:')
+        info('%s' % self.__argset)
+        info('debug arg_kv:')
+        for key, value in self.__arg_dict.iteritems():
+            info(' - %s : %s' % (key, value))
+
 class Arg(object):
     '''
     Sample code:
@@ -727,17 +866,22 @@ def function_curve(min_x, min_y, interval, function):
     plt.show()
 
 
-def foreach_line(fd=sys.stdin, percentage=False):
+def foreach_line(fd=sys.stdin, percentage=False, reporter=False):
     if percentage:
         cur_pos = fd.tell()
         fd.seek(0, 2)
         file_size = fd.tell()
         fd.seek(cur_pos)
         old_perc = 0
+
+    counter = 0
     while 1:
         line = fd.readline()
         if line == '':
             break
+
+        if reporter:
+            sys.stderr.write('%c%d line(s) processing%s' % (13, counter, '.' * (counter % 6)))
         if percentage:
             cur_pos = fd.tell()
             perc = int(100.0 * cur_pos / file_size)
@@ -748,17 +892,32 @@ def foreach_line(fd=sys.stdin, percentage=False):
         yield line.strip('\n')
 
 
-def foreach_row(fd=sys.stdin, min_fields_num=-1, seperator='\t', percentage=False):
+def foreach_row(fd=sys.stdin, 
+        min_fields_num=-1, 
+        seperator='\t', 
+        format=None,
+        percentage=False, 
+        reporter=False):
+
+    format_func = None
+    if format:
+        format_func = tuple_tranformer(format)
+
     if percentage:
         cur_pos = fd.tell()
         fd.seek(0, 2)
         file_size = fd.tell()
         fd.seek(cur_pos)
         old_perc = 0
+
+    counter = 0
     while 1:
         line = fd.readline()
+        counter += 1
         if line == '':
             break
+        if reporter:
+            sys.stderr.write('%c%d line(s) processing%s' % (13, counter, '.' * (counter % 6)))
         if percentage:
             cur_pos = fd.tell()
             perc = int(100.0 * cur_pos / file_size)
@@ -769,7 +928,11 @@ def foreach_row(fd=sys.stdin, min_fields_num=-1, seperator='\t', percentage=Fals
         arr = line.strip('\n').split(seperator)
         if min_fields_num>0 and len(arr)<min_fields_num:
             continue
-        yield arr
+        if format_func is None:
+            yield arr
+        else:
+            yield format_func(arr)
+
 
 def dict_from_str(s, l1_sep=';', l2_sep='='):
     dct = {}
@@ -1340,6 +1503,10 @@ def CMD_sendmail(argv):
 
     content = ''.join(file(filename).readlines())
     s.send(receiver, title, content)
+
+def CMD_autoarg(argv):
+    auto_arg = AutoArg()
+    auto_arg.debug()
 
 if __name__=='__main__':
     logging.basicConfig(level=logging.INFO)
