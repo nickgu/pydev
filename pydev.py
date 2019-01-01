@@ -553,12 +553,6 @@ def format_time(tm):
 def err(l):
     print >> sys.stderr, '[Error] ' + str(l)
 
-def info(l):
-    print >> sys.stderr, l
-
-def info(l):
-    print >> sys.stderr, l
-
 def log(l):
     print >> sys.stderr, '[Info] ' + str(l)
 
