@@ -556,6 +556,9 @@ def err(l):
 def info(l):
     print >> sys.stderr, l
 
+def info(l):
+    print >> sys.stderr, l
+
 def log(l):
     print >> sys.stderr, '[Info] ' + str(l)
 
