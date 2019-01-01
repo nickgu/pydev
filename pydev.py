@@ -479,10 +479,13 @@ def format_time(tm):
 
 
 def err(l):
-    print >> sys.stderr, l
+    print >> sys.stderr, '[Error] ' + str(l)
 
 def log(l):
-    print >> sys.stderr, l
+    print >> sys.stderr, '[Info] ' + str(l)
+
+def info(l):
+    print >> sys.stderr, '[Info] ' + str(l)
 
 class VarConfig:
     def __init__(self):
