@@ -559,6 +559,9 @@ def info(l):
 def log(l):
     print >> sys.stderr, l
 
+def flash_log(l):
+    sys.stderr.write('%c%s'%(13, str(l)))
+
 class VarConfig:
     def __init__(self):
         self.__config = {}
