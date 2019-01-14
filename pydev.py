@@ -751,7 +751,7 @@ class AutoArg:
     def option(self, key, default=None):
         # get single option, join list with ','
         if key not in self.__arg_dict:
-            info('arg option [%s] is not set, use [%s] as default' % (key, default))
+            info('arg option [%s] : [%s] (default)' % (key, default))
             return default
         value = ','.join(self.__arg_dict[key])
         info('arg option [%s] : [%s]' % (key, value))
@@ -760,7 +760,7 @@ class AutoArg:
     def options(self, key, default=None):
         # get single option, join list with ','
         if key not in self.__arg_dict:
-            info('arg option [%s] is not set, use [%s] as default' % (key, default))
+            info('arg option [%s] : [%s] (default)' % (key, default))
             return default
         value = self.__arg_dict[key]
         info('arg option [%s] : [%s]' % (key, value))
