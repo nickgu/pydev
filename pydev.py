@@ -559,7 +559,7 @@ def log(l):
 def info(l):
     print >> sys.stderr, '[Info] ' + str(l)
 
-def flash_log(l):
+def log13(l):
     sys.stderr.write('%c%s'%(13, str(l)))
 
 class VarConfig:
