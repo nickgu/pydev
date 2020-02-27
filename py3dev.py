@@ -52,16 +52,13 @@ class ColorString:
 
 def error(*args, on_screen=True):
     if on_screen:
-        tag = ColorString.red('[ERROR] ')
+        tag = ColorString.Yellow('[ERROR] ')
     else:
         tag = '[ERROR] '
     print(tag, *args, file=sys.stderr)
 
-def info(*args, on_screen=True):
-    if on_screen:
-        tag = ColorString.yellow('[INFO] ')
-    else:
-        tag = '[INFO] '
+def info(*args):
+    tag = '[INFO] '
     print(tag, *args, file=sys.stderr)
 
 
